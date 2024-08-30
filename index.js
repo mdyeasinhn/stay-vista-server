@@ -80,7 +80,10 @@ async function run() {
 
     // Get all Rooms from db
     app.get('/rooms', async(req, res)=>{
-      const result = await roomsCollection.find().toArray()
+      const category = req.query.category;
+      let query = {}
+      if(category && category !== "null") query = {category }
+      const result = await roomsCollection.find(query).toArray()
       res.send(result)
     });
 
@@ -91,6 +94,16 @@ async function run() {
       const result = await roomsCollection.findOne(query)
       res.send(result)
     });
+
+
+
+    // save a room data in db
+    app.post('/add-room', async(req, res) =>{
+      const roomData = req.body;
+      const result = await roomsCollection.insertOne(roomData)
+      res.send(result)
+
+    })
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 })
