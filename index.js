@@ -79,18 +79,18 @@ async function run() {
     })
 
     // Get all Rooms from db
-    app.get('/rooms', async(req, res)=>{
+    app.get('/rooms', async (req, res) => {
       const category = req.query.category;
       let query = {}
-      if(category && category !== "null") query = {category }
+      if (category && category !== "null") query = { category }
       const result = await roomsCollection.find(query).toArray()
       res.send(result)
     });
 
     // Get a single room data from db using id
-    app.get('/room/:id', async(req, res)=>{
+    app.get('/room/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id : new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await roomsCollection.findOne(query)
       res.send(result)
     });
@@ -98,12 +98,21 @@ async function run() {
 
 
     // save a room data in db
-    app.post('/add-room', async(req, res) =>{
+    app.post('/add-room', async (req, res) => {
       const roomData = req.body;
       const result = await roomsCollection.insertOne(roomData)
       res.send(result)
 
     })
+
+    // get all rooms from host
+    app.get('/my-list/:email', async (req, res) => {
+      const email = req.params.email;
+      let query = {"host.email":  email}
+      const result = await roomsCollection.find(query).toArray()
+      res.send(result)
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 })
