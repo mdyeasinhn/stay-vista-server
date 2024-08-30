@@ -81,20 +81,30 @@ async function run() {
 
 
     // save a user data 
-    app.put('/user', async(req, res)=>{
+    app.put('/user', async (req, res) => {
       const user = req.body;
-
+      const query = { email: user?.email }
       // if user allready exists 
-      const isExist = await usersCollection.findOne({email : user?.email})
-      if(isExist) return res.send(isExist);
+      const isExist = await usersCollection.findOne({ email: user?.email })
+      if (isExist) {
+        if (user.status === "Requested") {
+          const result = await usersCollection.updateOne(query, {
+            $set: {
+              status: user?.status
+            },
+          })
+          return res.send(result)
+        } else {
+          return res.send(isExist);
+        }
+      }
 
       // save the user for the first time
-      const options = {upsert : true};
-      const query ={email : user?.email} 
+      const options = { upsert: true };
       const updateDoc = {
-        $set:{
+        $set: {
           ...user,
-          timestamp : Date.now(),
+          timestamp: Date.now(),
 
         }
       }
@@ -103,7 +113,7 @@ async function run() {
     })
 
     // Get all users data
-    app.get('/users', async(req, res)=>{
+    app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
@@ -137,17 +147,17 @@ async function run() {
     // get all rooms from host
     app.get('/my-list/:email', async (req, res) => {
       const email = req.params.email;
-      let query = {"host.email":  email}
+      let query = { "host.email": email }
       const result = await roomsCollection.find(query).toArray()
       res.send(result)
     });
 
     // Delete a room
-    app.delete('/room/:id', async(req, res) => {
+    app.delete('/room/:id', async (req, res) => {
       const id = req.params.id;
-      const query ={_id : new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await roomsCollection.deleteOne(query);
-      res.send(result )
+      res.send(result)
     })
 
 
