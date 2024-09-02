@@ -49,6 +49,17 @@ async function run() {
   try {
     const roomsCollection = client.db('stayvista').collection('rooms');
     const usersCollection = client.db("stayvista").collection('users');
+
+    // verify admin middleware
+     const verifyAdmin = async( req, res, next) =>{
+      const user = req.user;
+      const query = {email : user?.email};
+      const result = await usersCollection.findOne(query);
+      if(!result || result?.role !== "admin"){
+        return res.status(401).send({message : 'unauthorized access!'})
+      }
+      next();
+     }  
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -135,7 +146,7 @@ async function run() {
     })
 
     // Get all users data
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
