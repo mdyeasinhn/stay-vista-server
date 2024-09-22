@@ -5,7 +5,7 @@ const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 8000
 
 // middleware
@@ -51,25 +51,25 @@ async function run() {
     const usersCollection = client.db("stayvista").collection('users');
 
     // verify admin middleware
-     const verifyAdmin = async( req, res, next) =>{
+    const verifyAdmin = async (req, res, next) => {
       const user = req.user;
-      const query = {email : user?.email};
+      const query = { email: user?.email };
       const result = await usersCollection.findOne(query);
-      if(!result || result?.role !== "admin"){
-        return res.status(401).send({message : 'unauthorized access!'})
+      if (!result || result?.role !== "admin") {
+        return res.status(401).send({ message: 'unauthorized access!' })
       }
       next();
-     } 
-      // verify host 
-     const verifyHost = async( req, res, next) =>{
+    }
+    // verify host 
+    const verifyHost = async (req, res, next) => {
       const user = req.user;
-      const query = {email : user?.email};
+      const query = { email: user?.email };
       const result = await usersCollection.findOne(query);
-      if(!result || result?.role !== "host"){
-        return res.status(401).send({message : 'unauthorized access!'})
+      if (!result || result?.role !== "host") {
+        return res.status(401).send({ message: 'unauthorized access!' })
       }
       next();
-     }  
+    }
     // auth related api
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -136,23 +136,23 @@ async function run() {
     })
 
     // get a user info by email for role
-    app.get('/user/:email', async(req, res)=>{
+    app.get('/user/:email', async (req, res) => {
       const email = req.params.email;
-      const result = await usersCollection.findOne({email});
+      const result = await usersCollection.findOne({ email });
       res.send(result)
     })
 
     // update a user role
-    app.patch('/users/update/:email', async(req, res) => {
+    app.patch('/users/update/:email', async (req, res) => {
       const email = req.params.email;
       const user = req.body;
-      const query = {email};
+      const query = { email };
       const updateDoc = {
-        $set:{ ...user, timestamp: Date.now()}
+        $set: { ...user, timestamp: Date.now() }
       }
       const result = await usersCollection.updateOne(query, updateDoc);
       res.send(result)
-       
+
     })
 
     // Get all users data
@@ -180,7 +180,7 @@ async function run() {
 
 
     // save a room data in db
-    app.post('/add-room',verifyToken, verifyHost, async (req, res) => {
+    app.post('/add-room', verifyToken, verifyHost, async (req, res) => {
       const roomData = req.body;
       const result = await roomsCollection.insertOne(roomData)
       res.send(result)
@@ -201,6 +201,25 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await roomsCollection.deleteOne(query);
       res.send(result)
+    });
+
+
+    // create payment intent
+    app.post('/create-payment-intent', verifyToken, async (req, res) => {
+      const price = req.body;
+      const priceInCent = parseFloat(price) * 100
+      if (!price || priceInCent < 1) return
+      
+      // generate client secret
+      const {client_secret} = await stripe.paymentIntents.create({
+        amount: priceInCent,
+        currency: "usd",
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      })
+      // send client secret as response
+      res.send({clientSecret : client_secret})
     })
 
 
