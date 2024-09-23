@@ -47,8 +47,10 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+
     const roomsCollection = client.db('stayvista').collection('rooms');
     const usersCollection = client.db("stayvista").collection('users');
+    const bookingsCollection = client.db("stayvista").collection('bookings');
 
     // verify admin middleware
     const verifyAdmin = async (req, res, next) => {
@@ -206,12 +208,14 @@ async function run() {
 
     // create payment intent
     app.post('/create-payment-intent', verifyToken, async (req, res) => {
-      const price = req.body;
+      const price = req.body.price;
       const priceInCent = parseFloat(price) * 100
-      if (!price || priceInCent < 1) return
-      
+      if (!price || priceInCent < 1) {
+        return res.status(400).send({ error: "Invalid price" });
+      }
+
       // generate client secret
-      const {client_secret} = await stripe.paymentIntents.create({
+      const { client_secret } = await stripe.paymentIntents.create({
         amount: priceInCent,
         currency: "usd",
         automatic_payment_methods: {
@@ -219,7 +223,32 @@ async function run() {
         },
       })
       // send client secret as response
-      res.send({clientSecret : client_secret})
+      res.send({ clientSecret: client_secret })
+    })
+
+
+    // save a bookings data in db
+    app.post('/booking', verifyToken, async (req, res) => {
+      const bookingData = req.body;
+      // save room booking
+      const result = await bookingsCollection.insertOne(bookingData);
+
+
+      res.send(result)
+
+    })
+
+    // update room status
+    app.patch('/room/status/:id', async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status
+      const query = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: { booked: status }
+      }
+      const result = await roomsCollection.updateOne(query, updateDoc)
+      res.send(result)
+
     })
 
 
