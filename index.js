@@ -306,7 +306,7 @@ async function run() {
       })
     })
     // host statistices
-    app.get('/host-stat', verifyToken, verifyHost, async (req, res) => {
+    app.get('/host-stat', verifyToken, verifyHost,  async (req, res) => {
       const { email } = req.user
       const bookingsDetails = await bookingsCollection.find({ "host.email": email }, {
         projection: {
@@ -333,6 +333,34 @@ async function run() {
         totalPrice,
         chartData,
         hostSince: timestamp
+      })
+    })
+    // guest statistices
+    app.get('/guest-stat', verifyToken,  async (req, res) => {
+      const { email } = req.user
+      const bookingsDetails = await bookingsCollection.find({ "guest.email": email }, {
+        projection: {
+          date: 1,
+          price: 1
+        }
+      }).toArray()
+      const { timestamp } = await usersCollection.findOne({ email }, { projection: { timestamp: 1 } })
+      const totalPrice = bookingsDetails.reduce((sum, booking) => sum + booking.price, 0)
+
+      const chartData = bookingsDetails.map(booking => {
+        const day = new Date(booking.date).getDate()
+        const month = new Date(booking.date).getMonth() + 1
+        const data = [`${day}/${month}`, booking?.price]
+        return data
+      })
+
+      chartData.unshift(["Day", "Sales"])
+
+      res.send({
+        totalBookings: bookingsDetails.length,
+        totalPrice,
+        chartData,
+        guestSince: timestamp
       })
     })
 
