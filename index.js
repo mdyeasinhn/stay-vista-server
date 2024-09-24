@@ -252,27 +252,59 @@ async function run() {
     })
 
     // get all bookings for a host
-    app.get("/manage-bookings/:email",verifyToken, verifyHost, async(req, res) =>{
+    app.get("/manage-bookings/:email", verifyToken, verifyHost, async (req, res) => {
       const email = req.params.email;
-      const query = {"host.email" : email}
+      const query = { "host.email": email }
       const result = await bookingsCollection.find(query).toArray()
       res.send(result);
     });
     // get all bookings for a guest
-    app.get("/my-bookings/:email",verifyToken, async(req, res) =>{
+    app.get("/my-bookings/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      const query = {"guest.email" : email}
+      const query = { "guest.email": email }
       const result = await bookingsCollection.find(query).toArray()
       res.send(result);
     });
 
-      // Cancel a booking data 
-      app.delete('/booking/:id', verifyToken,  async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await bookingsCollection.deleteOne(query);
-        res.send(result)
-      });
+    // Cancel a booking data 
+    app.delete('/booking/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingsCollection.deleteOne(query);
+      res.send(result)
+    });
+
+    // admin statistices
+    app.get('/admin-stat', async (req, res) => {
+      const bookingsDetails = await bookingsCollection.find({}, {
+        projection: {
+          date: 1,
+          price: 1
+        }
+      }).toArray()
+
+      const totalRooms = await roomsCollection.countDocuments()
+      const totalUsers = await usersCollection.countDocuments()
+      const totalPrice = bookingsDetails.reduce((sum, booking) => sum + booking.price, 0)
+
+
+      const chartData = bookingsDetails.map(booking => {
+        const day = new Date(booking.date).getDate()
+        const month = new Date(booking.date).getMonth() + 1
+        const data = [`${day}/${month}`, booking?.price]
+        return data
+      })
+
+      chartData.unshift(["Day", "Sales"])
+
+      res.send({
+        totalRooms,
+        totalUsers,
+        totalBookings: bookingsDetails.length,
+        totalPrice,
+        chartData
+      })
+    })
 
 
     // Send a ping to confirm a successful connection
