@@ -251,6 +251,13 @@ async function run() {
 
     })
 
+    // get all bookings for a host
+    app.get("/manage-bookings/:email",verifyToken, verifyHost, async(req, res) =>{
+      const email = req.params.email;
+      const query = {"host.email" : email}
+      const result = await bookingsCollection.find(query).toArray()
+      res.send(result);
+    });
     // get all bookings for a guest
     app.get("/my-bookings/:email",verifyToken, async(req, res) =>{
       const email = req.params.email;
