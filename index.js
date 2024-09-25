@@ -5,12 +5,18 @@ const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 const jwt = require('jsonwebtoken')
+const nodemailer = require("nodemailer");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 8000
 
 // middleware
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    'http://localhost:5173',
+     'http://localhost:5174',
+     "https://stay-vista-c7f33.web.app",
+     "https://stay-vista-c7f33.firebaseapp.com"
+],
   credentials: true,
   optionSuccessStatus: 200,
 }
@@ -134,8 +140,53 @@ async function run() {
         }
       }
       const result = await usersCollection.updateOne(query, updateDoc, options);
+         // send email to new user
+         sendEmail(user?.email, {
+          subject: 'Welcome to StayVista!',
+          message: `Hope you will find you destination`,
+        })
       res.send(result)
     })
+
+
+    // send email
+    const sendEmail = async (emailAdress, emailData) => {
+      service: "gmail"
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // true for port 465, false for other ports
+        auth: {
+          user: process.env.TRANSPOTER_EMAIL,
+          pass: process.env.TRANSPOTER_PASS,
+        },
+      });
+
+      // verify connection configuration
+      transporter.verify(function (error, success) {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Server is ready to take our messages");
+        }
+      });
+
+      const mail = {
+        from: `"Stay-vista" <${process.env.TRANSPOTER_EMAIL}>`, // sender address
+        to: emailAdress, // list of receivers
+        subject: emailData.subject, // Subject line
+        html: emailData.message
+      }
+      transporter.sendMail(mail, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log('Email Sent : ' + info.response);
+        }
+      });
+
+
+    }
 
     // get a user info by email for role
     app.get('/user/:email', async (req, res) => {
@@ -243,7 +294,17 @@ async function run() {
       const bookingData = req.body;
       // save room booking
       const result = await bookingsCollection.insertOne(bookingData);
+      // send email to guest
+      sendEmail(bookingData?.guest?.email, {
+        subject: "Booking successfully! ",
+        message: `You've successfully booked a room through StayVista. Transaction Id: ${bookingData.transactionId}`
+      });
+      // send email to guest
 
+      sendEmail(bookingData?.host?.email, {
+        subject: "Your room got booked!",
+        message:  `Get ready to welcome ${bookingData.guest.name}.`
+      })
 
       res.send(result)
 
@@ -377,10 +438,10 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db('admin').command({ ping: 1 })
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    )
+    // await client.db('admin').command({ ping: 1 })
+    // console.log(
+    //   'Pinged your deployment. You successfully connected to MongoDB!'
+    // )
   } finally {
     // Ensures that the client will close when you finish/error
   }
