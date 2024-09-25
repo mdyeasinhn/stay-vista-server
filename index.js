@@ -188,6 +188,17 @@ async function run() {
       res.send(result)
 
     })
+    // Update room  data in db
+    app.put('/room/update/:id', verifyToken, verifyHost, async (req, res) => {
+      const id = req.params.id;
+      const roomData = req.body;
+      const query = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: roomData,
+      }
+      const result = await roomsCollection.updateOne(query, updateDoc)
+      res.send(result)
+    })
 
     // get all rooms from host
     app.get('/my-list/:email', verifyToken, verifyHost, async (req, res) => {
@@ -300,13 +311,13 @@ async function run() {
       res.send({
         totalRooms,
         totalUsers,
-        totalBookings: bookingsDetails.length,
+        totalBookings: bookingsDetails?.length,
         totalPrice,
         chartData
       })
     })
     // host statistices
-    app.get('/host-stat', verifyToken, verifyHost,  async (req, res) => {
+    app.get('/host-stat', verifyToken, verifyHost, async (req, res) => {
       const { email } = req.user
       const bookingsDetails = await bookingsCollection.find({ "host.email": email }, {
         projection: {
@@ -329,14 +340,14 @@ async function run() {
 
       res.send({
         totalRooms,
-        totalBookings: bookingsDetails.length,
+        totalBookings: bookingsDetails?.length,
         totalPrice,
         chartData,
         hostSince: timestamp
       })
     })
     // guest statistices
-    app.get('/guest-stat', verifyToken,  async (req, res) => {
+    app.get('/guest-stat', verifyToken, async (req, res) => {
       const { email } = req.user
       const bookingsDetails = await bookingsCollection.find({ "guest.email": email }, {
         projection: {
@@ -357,7 +368,7 @@ async function run() {
       chartData.unshift(["Day", "Sales"])
 
       res.send({
-        totalBookings: bookingsDetails.length,
+        totalBookings: bookingsDetails?.length,
         totalPrice,
         chartData,
         guestSince: timestamp
